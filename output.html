@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Today's diaries</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: black; overflow: hidden; user-select: none; -webkit-user-select: none; }
+      #header {
+        position: fixed;
+        top: 5.5vh;
+        left: 5.5vw;
+        font-family: "SF Mono", Menlo, "Courier New", monospace;
+        font-size: 28px;
+        font-weight: bold;
+        color: #ffffff;
+        z-index: 10;
+        pointer-events: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #scroll-container {
+        height: 100vh;
+        overflow-y: scroll;
+        scrollbar-width: none;
+      }
+      #scroll-container::-webkit-scrollbar { display: none; }
+      #messages { padding-top: 110px; }
+      canvas { display: block; }
+    </style>
+    <script src="libraries/p5.min.js"></script>
+  </head>
+  <body>
+    <div id="header">Today's diaries</div>
+    <div id="scroll-container">
+      <div id="messages"></div>
+    </div>
+    <script type="module" src="output.js"></script>
+  </body>
+</html>

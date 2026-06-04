@@ -7,12 +7,28 @@
     <title>Sketch</title>
 
     <link rel="stylesheet" type="text/css" href="style.css">
+    <style>
+      #view-diaries {
+        position: fixed;
+        top: 5.5vh;
+        right: 5.5vw;
+        font-family: "SF Mono", Menlo, "Courier New", monospace;
+        font-size: 28px;
+        font-weight: bold;
+        color: #ffffff;
+        z-index: 10;
+        text-decoration: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+    </style>
 
     <script src="libraries/p5.min.js"></script>
     <script src="libraries/p5.sound.min.js"></script>
   </head>
 
   <body>
+    <a id="view-diaries" href="/output">Today's diaries</a>
     <script type="module" src="sketch.js"></script>
   </body>
 </html>

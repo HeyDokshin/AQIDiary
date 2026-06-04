@@ -151,13 +151,13 @@ const MELT_FRAG = `
 let cnv;
 let pg;
 let labelEl;
+let textareaEl;
 let meltShader;
-let userText = '';
-let cursor   = true;
-let aqiRaw   = 80;
-let city     = '';   // empty until geolocation resolves
+let cursor = true;
+let aqiRaw = 80;
+let city   = '';   // empty until geolocation resolves
 let geoLat, geoLng;
-let t        = 0;
+let t      = 0;
 
 // ─── AQI fetch ────────────────────────────────────────────────────────────────
 async function fetchAQIByCoords(lat, lng) {
@@ -185,11 +185,45 @@ function requestLocation() {
   );
 }
 
+// ─── Textarea positioning ─────────────────────────────────────────────────────
+// Must match drawTextBuffer() exactly: same left margin, same top offset,
+// same font size and line-height, same max-width — so selection highlights
+// land precisely on the shader-rendered letters.
+function positionTextarea() {
+  if (!textareaEl) return;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  const FONT = '"SF Mono", Menlo, "Courier New", monospace';
+  Object.assign(textareaEl.style, {
+    position:              'fixed',
+    top:                   `${H * 0.27 - 8}px`,
+    left:                  `${W * 0.055}px`,
+    width:                 `${W * 0.88}px`,
+    height:                `${H * 0.73}px`,
+    fontSize:              `${PARAMS.fontSize}px`,
+    lineHeight:            '1.4',
+    fontFamily:            FONT,
+    color:                 'transparent',
+    caretColor:            'white',
+    WebkitTextFillColor:   'transparent',
+    background:            'transparent',
+    border:                'none',
+    outline:               'none',
+    WebkitAppearance:      'none',
+    resize:                'none',
+    overflow:              'hidden',
+    padding:               '0',
+    margin:                '0',
+    zIndex:                '5',
+    whiteSpace:            'pre-wrap',
+    wordWrap:              'break-word',
+    textBaseline:          'top',
+  });
+}
+
 // ─── p5 setup ─────────────────────────────────────────────────────────────────
 function setup() {
   cnv = createCanvas(windowWidth, windowHeight, WEBGL);
-  cnv.elt.setAttribute('tabindex', '0');
-  cnv.elt.focus();
 
   pg = createGraphics(width, height);
   pg.pixelDensity(pixelDensity());
@@ -201,11 +235,37 @@ function setup() {
   labelEl.style('left',            '5.5vw');
   labelEl.style('margin',          '0');
   labelEl.style('font-family',     '"SF Mono", Menlo, "Courier New", monospace');
-  labelEl.style('font-size',       '32px');
+  labelEl.style('font-size',       '28px');
+  labelEl.style('font-weight',     'bold');
   labelEl.style('color',           PARAMS.textColor);
   labelEl.style('pointer-events',  'none');
   labelEl.style('user-select',     'none');
   labelEl.style('z-index',         '10');
+
+  // Textarea overlaid exactly on the shader text so selection highlights land
+  // on the rendered letters. Position + font must match drawTextBuffer() exactly.
+  const selStyle = document.createElement('style');
+  selStyle.textContent = [
+    '#shader-input::selection { background: rgba(255,255,255,0.25); }',
+    '#shader-input::-moz-selection { background: rgba(255,255,255,0.25); }',
+  ].join('');
+  document.head.appendChild(selStyle);
+
+  const ta = document.createElement('textarea');
+  ta.id = 'shader-input';
+  ta.setAttribute('autocomplete', 'off');
+  ta.setAttribute('autocorrect',  'off');
+  ta.setAttribute('spellcheck',   'false');
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitMessage();
+    }
+  });
+  document.body.appendChild(ta);
+  ta.focus();
+  textareaEl = ta;
+  positionTextarea();
 
   meltShader = createShader(MELT_VERT, MELT_FRAG);
 
@@ -233,12 +293,13 @@ function drawTextBuffer() {
   // Main typed block with manual word-wrap
   ctx.font      = `${mainSize}px ${FONT}`;
   ctx.fillStyle = PARAMS.textColor;
-  if (userText === '') {
+  const text = textareaEl ? textareaEl.value : '';
+  if (text === '') {
     ctx.fillStyle = '#888';
     ctx.fillText('type to write...', margin, height * 0.27);
     ctx.fillStyle = PARAMS.textColor;
   }
-  wrapText(ctx, userText + (cursor ? '_' : ' '), margin, height * 0.27, blockW, lineH);
+  wrapText(ctx, text, margin, height * 0.27, blockW, lineH);
 
   // Subtle AQI readout — bottom-right
   ctx.font         = `12px ${FONT}`;
@@ -308,47 +369,24 @@ function draw() {
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
 async function submitMessage() {
-  if (!userText.trim()) return;
+  const text = textareaEl ? textareaEl.value.trim() : '';
+  if (!text) return;
   if (!city) {
     labelEl.html('allow location first');
     setTimeout(() => labelEl.html(DIARY_LABEL), 2000);
     return;
   }
+  textareaEl.value = '';
   const currentAqi = PARAMS.aqiOverride !== 0 ? PARAMS.aqiOverride : aqiRaw;
-  const payload = { text: userText, city: city || 'unknown', aqi: currentAqi };
-  userText = '';
   try {
     await fetch('/api/message', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ text, city, aqi: currentAqi }),
     });
     labelEl.html('sent.');
     setTimeout(() => labelEl.html(DIARY_LABEL), 1500);
-  } catch (_) {
-    // server unreachable — text was already cleared, that's intentional
-  }
-}
-
-// ─── Input ────────────────────────────────────────────────────────────────────
-function keyPressed() {
-  if (keyCode === BACKSPACE) {
-    userText = userText.slice(0, -1);
-    return false;
-  }
-  if (keyCode === ENTER) {
-    if (keyIsDown(SHIFT)) {
-      userText += '\n';
-    } else {
-      submitMessage();
-    }
-    return false;
-  }
-}
-
-function keyTyped() {
-  userText += key;
-  return false;
+  } catch (_) {}
 }
 
 // ─── Responsive ───────────────────────────────────────────────────────────────
@@ -357,8 +395,8 @@ function windowResized() {
   pg.remove();
   pg = createGraphics(width, height);
   pg.pixelDensity(pixelDensity());
+  positionTextarea();
 }
 
 // ─── Expose p5 globals — required because this file is an ES module ───────────
-// ES modules are scoped; p5 global-mode looks for these on window.
-Object.assign(window, { setup, draw, keyPressed, keyTyped, windowResized });
+Object.assign(window, { setup, draw, windowResized });

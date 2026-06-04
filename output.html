@@ -20,6 +20,19 @@
         user-select: none;
         -webkit-user-select: none;
       }
+      #new-entry {
+        position: fixed;
+        top: 5.5vh;
+        right: 5.5vw;
+        font-family: "SF Mono", Menlo, "Courier New", monospace;
+        font-size: 28px;
+        font-weight: bold;
+        color: #ffffff;
+        z-index: 10;
+        text-decoration: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
       #scroll-container {
         height: 100vh;
         overflow-y: scroll;
@@ -33,6 +46,7 @@
   </head>
   <body>
     <div id="header">Today's diaries</div>
+    <a id="new-entry" href="/">New entry</a>
     <div id="scroll-container">
       <div id="messages"></div>
     </div>

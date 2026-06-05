@@ -1,12 +1,13 @@
 import { noiseMath, snoise2D } from 'https://cdn.jsdelivr.net/npm/shox@1.2.0/src/Shox.js';
 
 const FONT       = '"SF Mono", Menlo, "Courier New", monospace';
+const MOBILE_W   = 768;
+// Desktop sizes (mobile sizes computed inside createMessageSketch based on W)
 const MSG_SIZE   = 64;
 const META_SIZE  = 28;
-const LINE_H     = MSG_SIZE * 1.4;
 const PAD_TOP    = 72;
 const META_GAP   = 36;
-const BOTTOM_PAD = 90;   // headroom for drips below metadata
+const BOTTOM_PAD = 90;
 
 const PARAMS = {
   dripLength:   0.30,
@@ -113,10 +114,10 @@ const MELT_FRAG = `
 `;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function measureCardHeight(text, maxW) {
+function measureCardHeight(text, maxW, msgSize, lineH, padTop, metaGap, metaSize, botPad) {
   const canvas = document.createElement('canvas');
   const ctx    = canvas.getContext('2d');
-  ctx.font = `bold ${MSG_SIZE}px ${FONT}`;
+  ctx.font = `bold ${msgSize}px ${FONT}`;
   let lines = 0;
   for (const para of text.split('\n')) {
     if (!para) { lines++; continue; }
@@ -128,7 +129,7 @@ function measureCardHeight(text, maxW) {
     }
     lines++;
   }
-  return PAD_TOP + Math.max(lines, 1) * LINE_H + META_GAP + META_SIZE * 1.4 + BOTTOM_PAD;
+  return padTop + Math.max(lines, 1) * lineH + metaGap + metaSize * 1.4 + botPad;
 }
 
 function formatTime(iso) {
@@ -137,27 +138,35 @@ function formatTime(iso) {
          d.getMinutes().toString().padStart(2, '0');
 }
 
-function wrapText(ctx, text, x, y, maxW) {
+function wrapText(ctx, text, x, y, maxW, lineH) {
   let cy = y;
   for (const para of text.split('\n')) {
-    if (!para) { cy += LINE_H; continue; }
+    if (!para) { cy += lineH; continue; }
     let line = '';
     for (const word of para.split(' ')) {
       const test = line ? line + ' ' + word : word;
       if (ctx.measureText(test).width > maxW && line) {
-        ctx.fillText(line, x, cy); line = word; cy += LINE_H;
+        ctx.fillText(line, x, cy); line = word; cy += lineH;
       } else line = test;
     }
     ctx.fillText(line, x, cy);
-    cy += LINE_H;
+    cy += lineH;
   }
   return cy;
 }
 
 // ─── Per-message p5 instance ──────────────────────────────────────────────────
 function createMessageSketch(msg, container, W) {
+  const isMobile = W <= MOBILE_W;
+  const msgSize  = isMobile ? 32  : MSG_SIZE;
+  const metaSize = isMobile ? 13  : META_SIZE;
+  const lineH    = msgSize * 1.4;
+  const padTop   = isMobile ? 40  : PAD_TOP;
+  const metaGap  = isMobile ? 18  : META_GAP;
+  const botPad   = isMobile ? 48  : BOTTOM_PAD;
+
   const maxW  = W * 0.88;
-  const cardH = Math.ceil(measureCardHeight(msg.text, maxW));
+  const cardH = Math.ceil(measureCardHeight(msg.text, maxW, msgSize, lineH, padTop, metaGap, metaSize, botPad));
   const heat  = Math.min(
     (msg.aqi / PARAMS.aqiMax) * PARAMS.aqiInfluence * PARAMS.effectScale,
     1
@@ -179,22 +188,21 @@ function createMessageSketch(msg, container, W) {
       // Render text content once into pg (static texture for the shader)
       const ctx    = pg.drawingContext;
       const margin = p.width * 0.055;
-      // maxW already computed above via W, but recalculate for actual canvas width
-      const maxW   = p.width * 0.88;
+      const mW     = p.width * 0.88;
 
       pg.background(0);
       ctx.textBaseline = 'top';
       ctx.textAlign    = 'left';
-      ctx.font         = `bold ${MSG_SIZE}px ${FONT}`;
+      ctx.font         = `bold ${msgSize}px ${FONT}`;
       ctx.fillStyle    = '#ffffff';
-      const textEndY   = wrapText(ctx, msg.text, margin, PAD_TOP, maxW);
+      const textEndY   = wrapText(ctx, msg.text, margin, padTop, mW, lineH);
 
-      ctx.font      = `${META_SIZE}px ${FONT}`;
+      ctx.font      = `${metaSize}px ${FONT}`;
       ctx.fillStyle = '#ffffff';
       ctx.fillText(
         `${formatTime(msg.timestamp)}, ${msg.city}, AQI ${msg.aqi}`,
         margin,
-        textEndY + META_GAP
+        textEndY + metaGap
       );
 
       meltShader = p.createShader(MELT_VERT, MELT_FRAG);

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Today's diaries</title>
+    <title>View all</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { background: black; overflow: hidden; user-select: none; -webkit-user-select: none; }
@@ -41,11 +41,15 @@
       #scroll-container::-webkit-scrollbar { display: none; }
       #messages { padding-top: 110px; }
       canvas { display: block; }
+      @media (max-width: 768px) {
+        #header, #new-entry { font-size: 19px; }
+        #messages { padding-top: 72px; }
+      }
     </style>
     <script src="libraries/p5.min.js"></script>
   </head>
   <body>
-    <div id="header">Today's diaries</div>
+    <div id="header">View all</div>
     <a id="new-entry" href="/">New entry</a>
     <div id="scroll-container">
       <div id="messages"></div>
